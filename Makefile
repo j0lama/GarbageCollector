@@ -43,12 +43,13 @@ install: $(TARGET)
 	install -m 644 $(TARGET) $(DESTDIR)$(PREFIX)/lib/
 	install -d $(DESTDIR)$(PREFIX)/include/
 	install -m 644 $(INCLUDE_DIRECTORY)$(LIBNAME).h $(DESTDIR)$(PREFIX)/include/
-	@echo "Installation done."
+	@echo "Done."
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/lib/$(TARGET)
-	rm -f $(DESTDIR)$(PREFIX)/include/$(LIBNAME).h
+	@rm -f $(DESTDIR)$(PREFIX)/lib/$(TARGET)
+	@rm -f $(DESTDIR)$(PREFIX)/include/$(LIBNAME).h
+	@echo "Done."
 
 .PHONY: clean
 clean:
