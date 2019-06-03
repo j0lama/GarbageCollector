@@ -9,10 +9,12 @@ struct _Node
 	Node * next;
 };
 
+void GC_collect (void) __attribute__ ((destructor));
+
 Node * first = NULL;
 Node * last = NULL;
 
-void * GC_malloc(size_t size)
+void * GC_malloc (size_t size)
 {
 	Node * new;
 	/*Node memory allocation*/
@@ -44,7 +46,7 @@ void * GC_malloc(size_t size)
 	return new->ptr;
 }
 
-void GC_free(void * chunk)
+void GC_free (void * chunk)
 {
 	Node * aux;
 	if(chunk == NULL)
@@ -56,7 +58,7 @@ void GC_free(void * chunk)
 		return;
 
 	/*Search the chuck*/
-	while(aux->next != NULL || aux->ptr != chunk)
+	while(aux->next != NULL && aux->ptr != chunk)
 		aux = aux->next;
 
 	/*Invalid chunk pointer*/
@@ -93,3 +95,18 @@ void GC_free(void * chunk)
 	}
 	return;
 }
+
+void GC_collect (void)  
+{ 
+    Node * node, * aux;
+    node = first;
+    /*Free all the allocated chunks*/
+    while(node != NULL)
+    {
+    	aux = node->next;
+    	free(node->ptr);
+    	free(node);
+    	node = aux;
+    }
+    return;
+} 
