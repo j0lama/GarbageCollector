@@ -6,9 +6,9 @@ LIBNAME = libgc
 CC = gcc
 
 #FLAGS
-CFLAGS = -c -g -Os -Wall -Wextra -pedantic
+CFLAGS = -c -fPIC -g -Os -Wall -Wextra -pedantic
 
-TARGET = $(LIBNAME).a
+TARGET = $(LIBNAME).so
 
 # PATHS
 SOURCE_DIRECTORY = source/
@@ -21,14 +21,14 @@ OBJECTS = $(patsubst $(SOURCE_DIRECTORY)%.c, $(OBJECT_DIRECTORY)%.o, $(CFILES))
 
 
 ifeq ($(PREFIX),)
-    PREFIX := /usr/local
+    PREFIX := /usr/lib/x86_64-linux-gnu
 endif
 
 all: $(OBJECT_DIRECTORY) $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@echo "Building static library..."
-	@ar rcs $@ $^
+	gcc -shared $^ -o $@
 
 $(OBJECT_DIRECTORY):
 	@mkdir $(OBJECT_DIRECTORY)
@@ -39,10 +39,10 @@ $(OBJECT_DIRECTORY)%.o: $(SOURCE_DIRECTORY)%.c
 
 .PHONY: install
 install: $(TARGET)
-	install -d $(DESTDIR)$(PREFIX)/lib/
-	install -m 644 $(TARGET) $(DESTDIR)$(PREFIX)/lib/
-	install -d $(DESTDIR)$(PREFIX)/include/
-	install -m 644 $(INCLUDE_DIRECTORY)$(LIBNAME).h $(DESTDIR)$(PREFIX)/include/
+	install -d $(PREFIX)/
+	install -m 644 $(TARGET) $(PREFIX)/
+	install -d $(PREFIX)/include/
+	install -m 644 $(INCLUDE_DIRECTORY)$(LIBNAME).h $(PREFIX)/include/
 	@echo "Done."
 
 .PHONY: uninstall

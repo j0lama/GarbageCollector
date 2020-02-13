@@ -1,11 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "libgc.h"
+
+#define RED   "\x1B[31m"
+#define RESET "\x1B[0m"
+
+typedef struct _Node Node;
 
 struct _Node
 {
 	Node * prev;
 	void * ptr;
+	const char * filename;
+	const char * function;
+	int line;
 	Node * next;
 };
 
@@ -14,7 +21,7 @@ void GC_collect (void) __attribute__ ((destructor));
 Node * first = NULL;
 Node * last = NULL;
 
-void * GC_malloc (size_t size)
+void * GC_malloc_ (const char * filename, const char * function, int line, size_t size)
 {
 	Node * new;
 	/*Node memory allocation*/
@@ -35,6 +42,9 @@ void * GC_malloc (size_t size)
 	{
 		first = last = new;
 		new->prev = new->next = NULL;
+		new->filename = filename;
+		new->function = function;
+		new->line = line;
 		return new->ptr;
 	}
 
@@ -43,6 +53,9 @@ void * GC_malloc (size_t size)
 	new->prev = last;
 	new->next = NULL;
 	last = new;
+	new->filename = filename;
+	new->function = function;
+	new->line = line;
 	return new->ptr;
 }
 
@@ -96,6 +109,11 @@ void GC_free (void * chunk)
 	return;
 }
 
+void printNode(Node * node)
+{
+	printf("%s%s:%d%s: Unfreed memory chunck in '%s'.\n", RED, node->filename, node->line, RESET, node->function);
+}
+
 void GC_collect (void)  
 { 
     Node * node, * aux;
@@ -103,6 +121,7 @@ void GC_collect (void)
     /*Free all the allocated chunks*/
     while(node != NULL)
     {
+    	printNode(node);
     	aux = node->next;
     	free(node->ptr);
     	free(node);

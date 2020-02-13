@@ -3,9 +3,13 @@
 
 #include <stddef.h>
 
-typedef struct _Node Node;
+#ifdef GC_malloc
+#undef GC_malloc
+#endif
 
-void * GC_malloc(size_t size);
+#define GC_malloc(...) GC_malloc_(__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
+
+void * GC_malloc_(const char * filename, const char * function, int line, size_t size);
 void GC_free(void * chunk);
 
 #endif
