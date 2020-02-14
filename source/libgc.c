@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <execinfo.h>
 
 
 #define RESET "\x1B[0m"
@@ -8,8 +9,8 @@
 #define GREEN   "\033[1m\033[32m"
 #define YELLOW  "\033[1m\033[33m"
 
-#define TRUE 	1
-#define FALSE 	0
+
+#define BACKTRACE_DEPTH	10
 
 typedef struct _Node Node;
 
@@ -17,15 +18,20 @@ struct _Node
 {
 	Node * prev;
 	void * ptr;
-	uint8_t free;
+	int isfree;
 	const char * filename;
 	const char * function;
+	char ** backtraceDump;
+	size_t size;
 	int line;
 	Node * next;
 };
 
 /* Flag that enables screen logs */
-uint8_t LOGS_FLAG = FALSE;
+uint8_t LOGS_FLAG = 0;
+
+/* Flag that enables backtrace */
+uint8_t BACKTRACE_FLAG = 0;
 
 
 Node * first = NULL;
@@ -36,12 +42,19 @@ void GC_collect (void) __attribute__ ((destructor));
 
 void GC_enable_logs(void)
 {
-	LOGS_FLAG = TRUE;
+	LOGS_FLAG = 1;
+}
+
+void GC_enable_backtrace(void)
+{
+	BACKTRACE_FLAG = 1;
 }
 
 void * GC_malloc_ (const char * filename, const char * function, int line, size_t size)
 {
 	Node * new;
+	void * array[BACKTRACE_DEPTH];
+
 	/*Node memory allocation*/
 	new = (Node*) malloc(sizeof(Node));
 	if(new == NULL)
@@ -63,7 +76,12 @@ void * GC_malloc_ (const char * filename, const char * function, int line, size_
 		new->filename = filename;
 		new->function = function;
 		new->line = line;
-		new->free = FALSE;
+		new->isfree = 0;
+		if(BACKTRACE_FLAG == 1)
+		{
+			new->size = backtrace (array, BACKTRACE_DEPTH);
+			new->backtraceDump = backtrace_symbols (array, new->size);
+		}
 		return new->ptr;
 	}
 
@@ -75,7 +93,12 @@ void * GC_malloc_ (const char * filename, const char * function, int line, size_
 	new->filename = filename;
 	new->function = function;
 	new->line = line;
-	new->free = FALSE;
+	new->isfree = 0;
+	if(BACKTRACE_FLAG ==1)
+	{
+		new->size = backtrace (array, BACKTRACE_DEPTH);
+		new->backtraceDump = backtrace_symbols (array, new->size);
+	}
 	return new->ptr;
 }
 
@@ -95,18 +118,18 @@ void GC_free_ (const char * filename, const char * function, int line, void * ch
 	if(aux == NULL)
 		return;
 
-	/*Search the chuck*/
-	while(aux->next != NULL && aux->ptr != chunk)
+	/*Search the chunck*/
+	while(aux != NULL && aux->ptr != chunk)
 		aux = aux->next;
 
 	/*Invalid chunk pointer*/
-	if(aux->ptr != chunk)
+	if(aux == NULL || aux->ptr != chunk)
 		return;
 
 	/* Double free check */
-	if(aux->free == TRUE)
+	if(aux->isfree == 1)
 	{
-		if(LOGS_FLAG == TRUE)
+		if(LOGS_FLAG == 1)
 			printf("%s%s:%d%s: Double free in '%s'.\n",RED, filename, line, RESET, function);
 		return;
 	}
@@ -114,23 +137,23 @@ void GC_free_ (const char * filename, const char * function, int line, void * ch
 	/*Free the only allocated chunk*/
 	if(aux->prev == NULL && aux->next ==NULL)
 	{
-		free(aux->ptr);
-		aux->free = TRUE;
+		free(aux->backtraceDump);
+		aux->isfree = 1;
 	}
 	else if(aux->prev == NULL) /*Free the first node*/
 	{
-		free(aux->ptr);
-		aux->free = TRUE;
+		free(aux->backtraceDump);
+		aux->isfree = 1;
 	}
 	else if(aux->next == NULL) /*Free the last node*/
 	{
-		free(aux->ptr);
-		aux->free = TRUE;
+		free(aux->backtraceDump);
+		aux->isfree = 1;
 	}
 	else /*Free an intermediate chunk*/
 	{
-		free(aux->ptr);
-		aux->free = TRUE;
+		free(aux->backtraceDump);
+		aux->isfree = 1;
 	}
 	return;
 }
@@ -144,24 +167,34 @@ void GC_collect (void)
 { 
 	Node * node, * aux;
 	node = first;
-	uint8_t flag = TRUE;
+	uint8_t flag = 1;
+	int count = 0;
 
 	/*Free all the allocated chunks*/
 	while(node != NULL)
 	{
 		aux = node->next;
-		if(node->free == FALSE)
+		if(node->isfree == 0)
 		{
-			if(LOGS_FLAG == TRUE)
+			if(LOGS_FLAG == 1)
 				printNode(node);
-			free(node->ptr);
-			flag = FALSE;
+			if(BACKTRACE_FLAG == 1)
+			{
+				for (uint32_t i = 0; i < node->size; i++)
+					printf("[BT] %d: %s\n", i, node->backtraceDump[i]);
+				free(node->backtraceDump);
+			}
+			flag = 0;
+			count++;
 		}
+		free(node->ptr);
 		free(node);
 		node = aux;
 	}
-	if(LOGS_FLAG == TRUE && flag == TRUE)
+	if(LOGS_FLAG == 1 && flag == 1)
 		printf("%sOK%s: All memory chuncks freed.\n", GREEN, RESET);
+	else if(LOGS_FLAG == 1 && flag == 0)
+		printf("\n%sWARNING%s: %d unfreed memory chuncks.\n", YELLOW, RESET, count);
 
 	return;
 } 

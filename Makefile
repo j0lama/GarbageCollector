@@ -21,7 +21,7 @@ OBJECTS = $(patsubst $(SOURCE_DIRECTORY)%.c, $(OBJECT_DIRECTORY)%.o, $(CFILES))
 
 
 ifeq ($(PREFIX),)
-    PREFIX := /usr/lib/x86_64-linux-gnu
+    PREFIX := /usr/local/
 endif
 
 all: $(OBJECT_DIRECTORY) $(TARGET)
@@ -39,16 +39,16 @@ $(OBJECT_DIRECTORY)%.o: $(SOURCE_DIRECTORY)%.c
 
 .PHONY: install
 install: $(TARGET)
-	install -d $(PREFIX)/
-	install -m 644 $(TARGET) $(PREFIX)/
+	install -d /usr/lib/x86_64-linux-gnu/
+	install -m 644 $(TARGET) /usr/lib/x86_64-linux-gnu/
 	install -d $(PREFIX)/include/
 	install -m 644 $(INCLUDE_DIRECTORY)$(LIBNAME).h $(PREFIX)/include/
 	@echo "Done."
 
 .PHONY: uninstall
 uninstall:
-	@rm -f $(DESTDIR)$(PREFIX)/lib/$(TARGET)
-	@rm -f $(DESTDIR)$(PREFIX)/include/$(LIBNAME).h
+	@rm -f /usr/lib/x86_64-linux-gnu/$(TARGET)
+	@rm -f $(PREFIX)/include/$(LIBNAME).h
 	@echo "Done."
 
 .PHONY: clean
